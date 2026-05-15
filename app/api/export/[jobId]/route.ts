@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: { jobId: string } }
@@ -43,6 +45,6 @@ export async function GET(
     leadCount: leads?.length ?? 0,
     createdAt: job.created_at,
     input: job.input,
-    leads: (leads ?? []).map((l) => l.data),
+    leads: (leads ?? []).map((l: { data: Record<string, unknown> }) => l.data),
   });
 }
