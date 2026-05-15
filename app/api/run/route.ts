@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { mapActorPayloadToBackend } from "@/lib/mapPayload";
 
 export const dynamic = "force-dynamic";
 
@@ -25,18 +24,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to create job" }, { status: 500 });
     }
 
-    // Map actor payload to backend format for n8n
-    const backendPayload = mapActorPayloadToBackend(filters);
-
-    // Fire n8n webhook — include jobId so n8n can POST results back
-    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL!;
-    const n8nRes = await fetch(n8nWebhookUrl, {
+    const n8nRes = await fetch(process.env.N8N_WEBHOOK_URL!, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         jobId: job.id,
-        filters: backendPayload,
-        // Callback URL for n8n to POST results back
+        filters,
         callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/results`,
       }),
     });
