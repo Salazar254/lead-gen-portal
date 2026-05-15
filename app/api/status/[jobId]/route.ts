@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getJob } from "@/lib/jobStore";
 
 export const dynamic = "force-dynamic";
 
@@ -13,21 +13,18 @@ export async function GET(
     return NextResponse.json({ error: "Missing jobId" }, { status: 400 });
   }
 
-  const { data: job, error } = await supabase
-    .from("jobs")
-    .select("id, status, lead_count, error, created_at, input")
-    .eq("id", jobId)
-    .single();
+  const job = getJob(jobId);
 
-  if (error || !job) {
+  if (!job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
   return NextResponse.json({
-    jobId: job.id,
+    jobId,
     status: job.status,
-    leadCount: job.lead_count ?? 0,
+    leadCount: job.leads.length,
+    leads: job.status === "done" ? job.leads : [],
     error: job.error ?? null,
-    createdAt: job.created_at,
+    createdAt: job.createdAt,
   });
 }

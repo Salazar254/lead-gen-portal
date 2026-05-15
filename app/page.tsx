@@ -45,6 +45,24 @@ function isMeaningful(v: unknown): boolean {
   return true;
 }
 
+function downloadCSV(leads: Record<string, unknown>[], jobId: string) {
+  if (!leads.length) return;
+  const headers = Object.keys(leads[0]);
+  const rows = leads.map(l => headers.map(h => {
+    const v = l[h] ?? "";
+    const s = String(v).replace(/"/g, '""');
+    return s.includes(",") || s.includes("\n") || s.includes('"') ? `"${s}"` : s;
+  }).join(","));
+  const csv = [headers.join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `leads-${jobId.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function TagInput({
@@ -387,10 +405,10 @@ function ResultsPanel({
       {status === "done" && (
         <>
           <button className="download-btn" onClick={onDownload}>
-            ↓ Download PDF Report
+            ↓ Download CSV
           </button>
           <div className="run-log" style={{ marginTop: 8 }}>
-            <div className="log-line ok">› {leadCount.toLocaleString()} leads saved to Supabase</div>
+            <div className="log-line ok">› {leadCount.toLocaleString()} leads ready for download</div>
             <div className="log-line ok">› Job complete</div>
           </div>
         </>
@@ -423,7 +441,7 @@ function RunHistory({ jobs }: { jobs: HistoryJob[] }) {
           <div className="history-right">
             <span className="history-count">{j.leadCount.toLocaleString()} leads</span>
             {j.status === "done" && (
-              <button className="history-dl" onClick={j.onDownload}>↓ PDF</button>
+              <button className="history-dl" onClick={j.onDownload}>↓ CSV</button>
             )}
           </div>
         </div>
@@ -452,6 +470,7 @@ export default function Portal() {
   const [leadCount, setLeadCount] = useState(0);
   const [runError, setRunError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryJob[]>([]);
+  const [leads, setLeads] = useState<Record<string, unknown>[]>([]);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -488,12 +507,14 @@ export default function Portal() {
           clearInterval(pollRef.current!);
           setRunStatus("done");
           setLeadCount(data.leadCount);
+          const completedLeads: Record<string, unknown>[] = data.leads ?? [];
+          setLeads(completedLeads);
           setHistory(prev => [{
             jobId: jid,
             status: "done",
             leadCount: data.leadCount,
             createdAt: data.createdAt,
-            onDownload: () => handleDownload(jid),
+            onDownload: () => downloadCSV(completedLeads, jid),
           }, ...prev.filter(h => h.jobId !== jid)]);
         } else if (data.status === "failed") {
           clearInterval(pollRef.current!);
@@ -538,48 +559,6 @@ export default function Portal() {
     setRunError(null);
   };
 
-  const handleDownload = async (jid: string) => {
-    const res = await fetch(`/api/export/${jid}`);
-    const data = await res.json();
-    if (!res.ok) { alert(data.error); return; }
-    // Client-side PDF generation using browser print
-    const leads: Record<string, unknown>[] = data.leads ?? [];
-    const html = buildPdfHtml(leads, data.createdAt, jid);
-    const win = window.open("", "_blank");
-    if (win) {
-      win.document.write(html);
-      win.document.close();
-      win.focus();
-      setTimeout(() => win.print(), 500);
-    }
-  };
-
-  function buildPdfHtml(leads: Record<string, unknown>[], createdAt: string, jid: string): string {
-    const rows = leads.map(l =>
-      `<tr>
-        <td>${l.firstName ?? ""} ${l.lastName ?? ""}</td>
-        <td>${l.title ?? ""}</td>
-        <td>${l.email ?? "—"}</td>
-        <td>${l.companyName ?? ""}</td>
-        <td>${l.personCountry ?? ""}</td>
-      </tr>`
-    ).join("");
-    return `<!DOCTYPE html><html><head><title>Leads Export ${jid.slice(0, 8)}</title>
-    <style>
-      body { font-family: sans-serif; font-size: 11px; padding: 20px; }
-      h1 { font-size: 16px; margin-bottom: 4px; }
-      p { color: #666; margin-bottom: 16px; font-size: 10px; }
-      table { width: 100%; border-collapse: collapse; }
-      th { background: #111; color: white; padding: 6px 8px; text-align: left; font-size: 10px; }
-      td { padding: 5px 8px; border-bottom: 1px solid #eee; }
-      tr:nth-child(even) { background: #f9f9f9; }
-    </style></head><body>
-    <h1>Lead Export Report</h1>
-    <p>Job: ${jid} · Exported: ${new Date(createdAt).toLocaleString()} · ${leads.length} leads</p>
-    <table><thead><tr><th>Name</th><th>Title</th><th>Email</th><th>Company</th><th>Country</th></tr></thead>
-    <tbody>${rows}</tbody></table>
-    </body></html>`;
-  }
 
   if (!schema) {
     return (
@@ -616,7 +595,7 @@ export default function Portal() {
             <div className="filters-top">
               <div>
                 <div className="filters-title">Build your search</div>
-                <div className="filters-sub">Configure filters to extract verified leads. All results saved to Supabase.</div>
+                <div className="filters-sub">Configure filters to extract verified leads. Download results as CSV when complete.</div>
               </div>
             </div>
             <div className="accordions">
@@ -649,7 +628,7 @@ export default function Portal() {
               leadCount={leadCount}
               jobId={jobId}
               error={runError}
-              onDownload={() => jobId && handleDownload(jobId)}
+              onDownload={() => jobId && downloadCSV(leads, jobId)}
             />
             <RunHistory jobs={history} />
           </div>
