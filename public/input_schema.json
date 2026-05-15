@@ -1,0 +1,554 @@
+{
+  "groups": [
+    {
+      "key": "personRoleGroup",
+      "icon": "👤",
+      "title": "Job Title & Role",
+      "description": "Filter by title terms, seniority, function, and role logic.",
+      "fields": [
+        {
+          "key": "personTitleIncludes",
+          "title": "Include Job Titles",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. CFO, Finance Manager",
+          "description": "Only return people whose job title matches one of these terms.",
+          "bestPractice": "Start with 1–3 core titles. Add more only if results are too low.",
+          "default": ["cfo","chief financial officer","finance manager","head of finance","procurement manager","head of procurement","procurement officer","purchasing manager","supply chain manager","head of supply chain","logistics manager","insurance manager","risk manager","hr manager","human resources manager","head of human resources","admin manager","administration manager"]
+        },
+        {
+          "key": "personTitleExcludes",
+          "title": "Exclude Job Titles",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. CEO, Founder",
+          "description": "Exclude people whose title contains any of these terms.",
+          "bestPractice": "Use excludes to remove bad matches like assistant, junior, intern.",
+          "default": ["ceo","chief executive officer","founder","co-founder","owner","director","managing director","executive director","chairman","president","partner"]
+        },
+        {
+          "key": "includeTitleVariants",
+          "title": "Include Title Variants",
+          "type": "boolean",
+          "description": "Automatically expand title matching to include common synonyms and variants.",
+          "bestPractice": "Keep ON unless you need very strict exact-title matching.",
+          "default": false
+        },
+        {
+          "key": "seniorityIncludes",
+          "title": "Include Seniority",
+          "type": "array",
+          "itemType": "enum",
+          "options": [
+            { "value": "c_suite", "label": "C-Suite" },
+            { "value": "vp", "label": "VP" },
+            { "value": "director", "label": "Director" },
+            { "value": "manager", "label": "Manager" },
+            { "value": "senior", "label": "Senior" },
+            { "value": "entry", "label": "Entry Level" },
+            { "value": "owner", "label": "Owner" },
+            { "value": "partner", "label": "Partner" },
+            { "value": "intern", "label": "Intern" }
+          ],
+          "description": "Filter by seniority level.",
+          "bestPractice": "Combine with title filters for precision."
+        },
+        {
+          "key": "seniorityExcludes",
+          "title": "Exclude Seniority",
+          "type": "array",
+          "itemType": "enum",
+          "options": [
+            { "value": "c_suite", "label": "C-Suite" },
+            { "value": "vp", "label": "VP" },
+            { "value": "director", "label": "Director" },
+            { "value": "manager", "label": "Manager" },
+            { "value": "senior", "label": "Senior" },
+            { "value": "entry", "label": "Entry Level" },
+            { "value": "owner", "label": "Owner" },
+            { "value": "partner", "label": "Partner" },
+            { "value": "intern", "label": "Intern" }
+          ],
+          "description": "Exclude specific seniority levels.",
+          "bestPractice": "Exclude intern/entry for B2B decision-maker targeting."
+        },
+        {
+          "key": "functionIncludes",
+          "title": "Include Department / Function",
+          "type": "array",
+          "itemType": "enum",
+          "options": [
+            { "value": "finance", "label": "Finance" },
+            { "value": "operations", "label": "Operations" },
+            { "value": "human_resources", "label": "Human Resources" },
+            { "value": "sales", "label": "Sales" },
+            { "value": "marketing", "label": "Marketing" },
+            { "value": "engineering", "label": "Engineering / IT" },
+            { "value": "information_technology", "label": "Information Technology" },
+            { "value": "business_development", "label": "Business Development" },
+            { "value": "support", "label": "Customer Support" },
+            { "value": "consulting", "label": "Consulting" },
+            { "value": "education", "label": "Education" }
+          ],
+          "description": "Target people in specific departments.",
+          "bestPractice": "Use alongside title filters for tighter targeting."
+        },
+        {
+          "key": "roleMatchMode",
+          "title": "Role Match Mode",
+          "type": "enum",
+          "options": [
+            { "value": "exact", "label": "Exact — title must match precisely" },
+            { "value": "any", "label": "Any — match any title term" },
+            { "value": "all", "label": "All — must match all title terms" }
+          ],
+          "description": "How strictly job titles are matched.",
+          "bestPractice": "Use 'exact' for precision. Use 'any' when results are too low.",
+          "default": "exact"
+        }
+      ]
+    },
+    {
+      "key": "contactGroup",
+      "icon": "✉️",
+      "title": "Contact Info",
+      "description": "Require contact channels, email deliverability state, and name matching.",
+      "fields": [
+        {
+          "key": "hasEmail",
+          "title": "Has Email",
+          "type": "boolean",
+          "description": "Only return people with a known email address.",
+          "bestPractice": "Turn ON when email outreach is required. Leave OFF for maximum volume.",
+          "default": true
+        },
+        {
+          "key": "hasPhone",
+          "title": "Has Phone",
+          "type": "boolean",
+          "description": "Only return people with a known phone number.",
+          "bestPractice": "Turn ON only when phone is required — reduces volume significantly.",
+          "default": false
+        },
+        {
+          "key": "emailStatusIncludes",
+          "title": "Email Status",
+          "type": "array",
+          "itemType": "enum",
+          "options": [
+            { "value": "verified", "label": "Verified" },
+            { "value": "unverified", "label": "Unverified" },
+            { "value": "invalid", "label": "Invalid" },
+            { "value": "catch_all", "label": "Catch-All" }
+          ],
+          "description": "Filter by email deliverability status.",
+          "bestPractice": "For outbound campaigns, start with 'verified' only."
+        },
+        {
+          "key": "personFirstNameIncludes",
+          "title": "First Name Contains",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. John",
+          "description": "Only return people whose first name matches.",
+          "bestPractice": "Use sparingly — only when targeting a named individual."
+        },
+        {
+          "key": "personLastNameIncludes",
+          "title": "Last Name Contains",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. Smith",
+          "description": "Only return people whose last name matches.",
+          "bestPractice": "Use sparingly — only when targeting a named individual."
+        }
+      ]
+    },
+    {
+      "key": "personLocationGroup",
+      "icon": "📍",
+      "title": "Location — Person",
+      "description": "Filter by where the person is based.",
+      "fields": [
+        {
+          "key": "personLocationCountryIncludes",
+          "title": "Country (Include)",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. Kenya, Uganda",
+          "description": "Only return people based in these countries.",
+          "bestPractice": "Set country first before adding state or city for cleaner targeting.",
+          "default": ["Kenya"]
+        },
+        {
+          "key": "personLocationCountryExcludes",
+          "title": "Country (Exclude)",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. South Africa",
+          "description": "Exclude people from these countries.",
+          "bestPractice": "Use to remove countries with noisy or irrelevant results."
+        },
+        {
+          "key": "personLocationStateIncludes",
+          "title": "State / Region (Include)",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. Nairobi, Coast",
+          "description": "Only return people in these states or regions.",
+          "bestPractice": "Add state only after setting country."
+        },
+        {
+          "key": "personLocationCityIncludes",
+          "title": "City (Include)",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. Nairobi, Mombasa",
+          "description": "Only return people in these cities.",
+          "bestPractice": "Use city last for precision once volume is validated."
+        }
+      ]
+    },
+    {
+      "key": "companyGroup",
+      "icon": "🏢",
+      "title": "Company",
+      "description": "Filter by company name and industry.",
+      "fields": [
+        {
+          "key": "companyNameIncludes",
+          "title": "Company Name Contains",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. Equity Bank, Safaricom",
+          "description": "Only return people at companies whose name contains these terms.",
+          "bestPractice": "Use for targeted account lists. Combine with domain for precision."
+        },
+        {
+          "key": "companyNameExcludes",
+          "title": "Company Name Excludes",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. Consulting, Agency",
+          "description": "Exclude people at companies whose name contains these terms.",
+          "bestPractice": "Remove known bad company types like staffing or consulting firms."
+        },
+        {
+          "key": "companyIndustryIncludes",
+          "title": "Industry (Include)",
+          "type": "array",
+          "itemType": "enum",
+          "options": [
+            { "value": "Banking", "label": "Banking" },
+            { "value": "Insurance", "label": "Insurance" },
+            { "value": "Financial Services", "label": "Financial Services" },
+            { "value": "Investment Management", "label": "Investment Management" },
+            { "value": "Capital Markets", "label": "Capital Markets" },
+            { "value": "Accounting", "label": "Accounting" },
+            { "value": "Real Estate", "label": "Real Estate" },
+            { "value": "Commercial Real Estate", "label": "Commercial Real Estate" },
+            { "value": "Construction", "label": "Construction" },
+            { "value": "Logistics & Supply Chain", "label": "Logistics & Supply Chain" },
+            { "value": "Transportation/Trucking/Railroad", "label": "Transportation" },
+            { "value": "Manufacturing", "label": "Manufacturing" },
+            { "value": "Electrical/Electronic Manufacturing", "label": "Electronics Manufacturing" },
+            { "value": "Hospital & Health Care", "label": "Healthcare" },
+            { "value": "Pharmaceuticals", "label": "Pharmaceuticals" },
+            { "value": "Medical Devices", "label": "Medical Devices" },
+            { "value": "Oil & Energy", "label": "Oil & Energy" },
+            { "value": "Renewables & Environment", "label": "Renewables" },
+            { "value": "Utilities", "label": "Utilities" },
+            { "value": "Hospitality", "label": "Hospitality" },
+            { "value": "Food & Beverages", "label": "Food & Beverages" },
+            { "value": "Retail", "label": "Retail" },
+            { "value": "Wholesale", "label": "Wholesale" },
+            { "value": "Education Management", "label": "Education" },
+            { "value": "Higher Education", "label": "Higher Education" },
+            { "value": "Information Technology & Services", "label": "IT & Services" },
+            { "value": "Computer Software", "label": "Software" },
+            { "value": "Telecommunications", "label": "Telecommunications" },
+            { "value": "Human Resources", "label": "Human Resources" },
+            { "value": "Staffing & Recruiting", "label": "Staffing & Recruiting" },
+            { "value": "Management Consulting", "label": "Management Consulting" },
+            { "value": "Government Administration", "label": "Government" },
+            { "value": "Non-Profit Organization Management", "label": "Non-Profit" }
+          ],
+          "description": "Only return people at companies in these industries.",
+          "bestPractice": "Start with a small industry set. Expand after validating result quality.",
+          "default": ["Banking","Insurance","Financial Services","Real Estate","Construction","Logistics & Supply Chain","Manufacturing","Hospital & Health Care","Oil & Energy","Hospitality","Retail","Wholesale","Education Management"]
+        },
+        {
+          "key": "companyIndustryExcludes",
+          "title": "Industry (Exclude)",
+          "type": "array",
+          "itemType": "enum",
+          "options": [
+            { "value": "Staffing & Recruiting", "label": "Staffing & Recruiting" },
+            { "value": "Management Consulting", "label": "Management Consulting" },
+            { "value": "Non-Profit Organization Management", "label": "Non-Profit" },
+            { "value": "Government Administration", "label": "Government" },
+            { "value": "Higher Education", "label": "Higher Education" }
+          ],
+          "description": "Exclude people at companies in these industries.",
+          "bestPractice": "Exclude noisy verticals that keep showing up in bad results."
+        },
+        {
+          "key": "companyMatchMode",
+          "title": "Company Match Mode",
+          "type": "enum",
+          "options": [
+            { "value": "any", "label": "Any — match any company filter" },
+            { "value": "all", "label": "All — must match all company filters" }
+          ],
+          "description": "How company name and industry filters are combined.",
+          "bestPractice": "Use 'any' for broad targeting. Use 'all' for strict account matching.",
+          "default": "any"
+        }
+      ]
+    },
+    {
+      "key": "companyKeywordsGroup",
+      "icon": "🔎",
+      "title": "Company Keywords",
+      "description": "Filter by company keyword matching — broader than industry.",
+      "fields": [
+        {
+          "key": "companyKeywordIncludes",
+          "title": "Keywords (Include)",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. fintech, microfinance, sacco",
+          "description": "Only return companies whose profile contains these keywords.",
+          "bestPractice": "Use for niche verticals not covered by standard industry options.",
+          "default": ["insurance","banking","microfinance","sacco","fintech","real estate","construction","manufacturing","logistics","healthcare","energy","hospitality","education","retail","wholesale"]
+        },
+        {
+          "key": "companyKeywordExcludes",
+          "title": "Keywords (Exclude)",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. startup, agency",
+          "description": "Exclude companies whose profile contains these keywords.",
+          "bestPractice": "Remove low-quality company types from results."
+        },
+        {
+          "key": "companyKeywordMode",
+          "title": "Keyword Match Mode",
+          "type": "enum",
+          "options": [
+            { "value": "broad", "label": "Broad — partial keyword match" },
+            { "value": "exact", "label": "Exact — full keyword match" }
+          ],
+          "description": "How company keywords are matched.",
+          "bestPractice": "Use broad for discovery. Use exact for precision targeting.",
+          "default": "broad"
+        }
+      ]
+    },
+    {
+      "key": "companySizeGroup",
+      "icon": "🏭",
+      "title": "Company Size",
+      "description": "Filter by company size buckets and custom employee ranges.",
+      "fields": [
+        {
+          "key": "companySizeIncludes",
+          "title": "Company Size (Include)",
+          "type": "array",
+          "itemType": "enum",
+          "options": [
+            { "value": "1-10", "label": "1–10 employees" },
+            { "value": "11-50", "label": "11–50 employees" },
+            { "value": "51-200", "label": "51–200 employees" },
+            { "value": "201-500", "label": "201–500 employees" },
+            { "value": "501-1000", "label": "501–1,000 employees" },
+            { "value": "1001-5000", "label": "1,001–5,000 employees" },
+            { "value": "5001-10000", "label": "5,001–10,000 employees" },
+            { "value": "10001+", "label": "10,001+ employees" }
+          ],
+          "description": "Only return people at companies in these size ranges.",
+          "bestPractice": "Avoid micro businesses — start with 51+ for B2B decision-makers.",
+          "default": ["51-200","201-500","501-1000","1001-5000","5001-10000"]
+        },
+        {
+          "key": "companySizeExcludes",
+          "title": "Company Size (Exclude)",
+          "type": "array",
+          "itemType": "enum",
+          "options": [
+            { "value": "1-10", "label": "1–10 employees" },
+            { "value": "11-50", "label": "11–50 employees" },
+            { "value": "51-200", "label": "51–200 employees" },
+            { "value": "201-500", "label": "201–500 employees" },
+            { "value": "501-1000", "label": "501–1,000 employees" },
+            { "value": "1001-5000", "label": "1,001–5,000 employees" },
+            { "value": "5001-10000", "label": "5,001–10,000 employees" },
+            { "value": "10001+", "label": "10,001+ employees" }
+          ],
+          "description": "Exclude companies in these size ranges.",
+          "bestPractice": "Exclude 1–10 to remove sole traders and micro businesses."
+        },
+        {
+          "key": "companyEmployeeMin",
+          "title": "Custom Min Employees",
+          "type": "integer",
+          "min": 0,
+          "placeholder": "e.g. 100",
+          "description": "Custom minimum employee count — overrides size bucket lower bound.",
+          "bestPractice": "Use with max for exact ranges when buckets are too broad."
+        },
+        {
+          "key": "companyEmployeeMax",
+          "title": "Custom Max Employees",
+          "type": "integer",
+          "min": 0,
+          "placeholder": "e.g. 5000",
+          "description": "Custom maximum employee count — overrides size bucket upper bound.",
+          "bestPractice": "Leave empty unless you need precision beyond standard buckets."
+        }
+      ]
+    },
+    {
+      "key": "companyDomainGroup",
+      "icon": "🌐",
+      "title": "Company Domain",
+      "description": "Filter by exact or partial domain matching.",
+      "fields": [
+        {
+          "key": "companyDomainIncludes",
+          "title": "Domain (Include)",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. equitybank.co.ke, safaricom.com",
+          "description": "Only return people at companies with these domains.",
+          "bestPractice": "Use for exact target account lists. Switch to strict mode to avoid false positives."
+        },
+        {
+          "key": "companyDomainExcludes",
+          "title": "Domain (Exclude)",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. gmail.com, yahoo.com",
+          "description": "Exclude people at companies with these domains.",
+          "bestPractice": "Exclude free email providers to remove personal accounts."
+        },
+        {
+          "key": "companyDomainMatchMode",
+          "title": "Domain Match Mode",
+          "type": "enum",
+          "options": [
+            { "value": "strict", "label": "Strict — exact domain match" },
+            { "value": "contains", "label": "Contains — partial domain match" }
+          ],
+          "description": "How company domains are matched.",
+          "bestPractice": "Use strict for exact domains. Use contains only for broad discovery.",
+          "default": "strict"
+        }
+      ]
+    },
+    {
+      "key": "companyLocationGroup",
+      "icon": "🌍",
+      "title": "Location — Company",
+      "description": "Filter by where the company is headquartered.",
+      "fields": [
+        {
+          "key": "companyLocationCountryIncludes",
+          "title": "HQ Country (Include)",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. Kenya, Nigeria",
+          "description": "Only return companies headquartered in these countries.",
+          "bestPractice": "Use when HQ country matters more than person location."
+        },
+        {
+          "key": "companyLocationCountryExcludes",
+          "title": "HQ Country (Exclude)",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. South Africa",
+          "description": "Exclude companies headquartered in these countries.",
+          "bestPractice": "Exclude countries with foreign multinationals if targeting local companies."
+        },
+        {
+          "key": "companyLocationStateIncludes",
+          "title": "HQ State / Region (Include)",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. Nairobi County",
+          "description": "Only return companies headquartered in these states or regions.",
+          "bestPractice": "Add after setting country to avoid over-filtering."
+        },
+        {
+          "key": "companyLocationCityIncludes",
+          "title": "HQ City (Include)",
+          "type": "array",
+          "itemType": "string",
+          "placeholder": "e.g. Nairobi, Mombasa",
+          "description": "Only return companies headquartered in these cities.",
+          "bestPractice": "Use city last for maximum precision."
+        }
+      ]
+    },
+    {
+      "key": "revenueGroup",
+      "icon": "💰",
+      "title": "Revenue & Funding",
+      "description": "Filter by annual revenue bucket and funding stage.",
+      "fields": [
+        {
+          "key": "annualRevenueIncludes",
+          "title": "Annual Revenue (Include)",
+          "type": "array",
+          "itemType": "enum",
+          "options": [
+            { "value": "0-1M", "label": "Under $1M" },
+            { "value": "1M-10M", "label": "$1M – $10M" },
+            { "value": "10M-50M", "label": "$10M – $50M" },
+            { "value": "50M-200M", "label": "$50M – $200M" },
+            { "value": "200M-1B", "label": "$200M – $1B" },
+            { "value": "1B+", "label": "Over $1B" }
+          ],
+          "description": "Only return companies in these annual revenue ranges.",
+          "bestPractice": "Start broad, then tighten once you confirm enough matching volume."
+        },
+        {
+          "key": "fundingStageIncludes",
+          "title": "Funding Stage (Include)",
+          "type": "array",
+          "itemType": "enum",
+          "options": [
+            { "value": "pre_seed", "label": "Pre-Seed" },
+            { "value": "seed", "label": "Seed" },
+            { "value": "series_a", "label": "Series A" },
+            { "value": "series_b", "label": "Series B" },
+            { "value": "series_c", "label": "Series C+" },
+            { "value": "ipo", "label": "IPO / Public" },
+            { "value": "bootstrapped", "label": "Bootstrapped" }
+          ],
+          "description": "Only return companies at these funding stages.",
+          "bestPractice": "Use only when stage fit matters for your outreach strategy."
+        }
+      ]
+    },
+    {
+      "key": "runOptionsGroup",
+      "icon": "⚙️",
+      "title": "Run Options",
+      "description": "Control how many leads to extract and run behaviour.",
+      "fields": [
+        {
+          "key": "totalResults",
+          "title": "Max Leads to Extract",
+          "type": "integer",
+          "min": 50,
+          "max": 1000,
+          "placeholder": "e.g. 500",
+          "description": "Maximum number of leads to extract in this run.",
+          "bestPractice": "Start with 100–200 to validate quality before running at full volume.",
+          "default": 1000
+        }
+      ]
+    }
+  ]
+}
