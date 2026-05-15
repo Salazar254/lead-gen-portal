@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createJob } from "@/lib/jobStore";
+import { createJob, registerJob } from "@/lib/jobStore";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
     }
 
     const jobId = crypto.randomUUID();
-    createJob(jobId);
+    await createJob(jobId, filters);
+    await registerJob(jobId);
 
     const n8nRes = await fetch(process.env.N8N_WEBHOOK_URL!, {
       method: "POST",

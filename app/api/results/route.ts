@@ -22,16 +22,16 @@ export async function POST(req: NextRequest) {
     }
 
     if (n8nError) {
-      failJob(jobId, n8nError);
+      await failJob(jobId, n8nError);
       return NextResponse.json({ ok: true });
     }
 
     if (!Array.isArray(leads) || leads.length === 0) {
-      failJob(jobId, "No leads returned from workflow");
+      await failJob(jobId, "No leads returned from workflow");
       return NextResponse.json({ error: "No leads in payload" }, { status: 400 });
     }
 
-    completeJob(jobId, leads);
+    await completeJob(jobId, leads);
     return NextResponse.json({ ok: true, count: leads.length });
   } catch (err) {
     console.error("/api/results error:", err);

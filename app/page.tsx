@@ -19,14 +19,23 @@ interface SchemaGroup {
 interface Schema { groups: SchemaGroup[]; }
 
 type Values = Record<string, unknown>;
+type RunStatus = "idle" | "running" | "done" | "failed";
 
-// ─── Map payload (mirrors mapActorPayloadToBackend) ───────────────────────────
+interface HistoryJobEntry {
+  jobId: string;
+  status: RunStatus;
+  leadCount: number;
+  createdAt: string;
+  leads: Record<string, unknown>[];
+  input?: Record<string, unknown>;
+  error?: string;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function buildActorPayload(values: Values, totalResults: number): Record<string, unknown> {
   return { ...values, totalResults };
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function countActiveFields(fields: SchemaField[], values: Values): number {
   return fields.filter(f => {
@@ -61,6 +70,26 @@ function downloadCSV(leads: Record<string, unknown>[], jobId: string) {
   a.download = `leads-${jobId.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function maskEmail(email: string): string {
+  const at = email.indexOf("@");
+  if (at < 0) return email;
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  return local.slice(0, 2) + "***@" + domain;
+}
+
+function summarizeInput(input?: Record<string, unknown>): string {
+  if (!input) return "";
+  const parts: string[] = [];
+  const loc = input.location ?? input.personCountry ?? input.country;
+  if (loc) parts.push(String(loc));
+  const titles = input.titles ?? input.jobTitles ?? input.title;
+  if (Array.isArray(titles) && titles.length) parts.push((titles as string[]).slice(0, 2).join(", "));
+  const ind = input.industries ?? input.companyIndustry ?? input.industry;
+  if (Array.isArray(ind) && ind.length) parts.push(String((ind as string[])[0]));
+  return parts.join(" · ") || "—";
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -275,8 +304,6 @@ function AccordionSection({
   );
 }
 
-// ─── JSON Preview ─────────────────────────────────────────────────────────────
-
 function JsonPreview({ payload }: { payload: Record<string, unknown> }) {
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -340,10 +367,6 @@ function JsonPreview({ payload }: { payload: Record<string, unknown> }) {
     </div>
   );
 }
-
-// ─── Results Panel ────────────────────────────────────────────────────────────
-
-type RunStatus = "idle" | "running" | "done" | "failed";
 
 function ResultsPanel({
   status, leadCount, jobId, error, onDownload,
@@ -417,35 +440,126 @@ function ResultsPanel({
   );
 }
 
-// ─── Run History ──────────────────────────────────────────────────────────────
+// ─── Results Table ────────────────────────────────────────────────────────────
 
-interface HistoryJob {
-  jobId: string; status: RunStatus; leadCount: number;
-  createdAt: string; onDownload: () => void;
+function ResultsTable({
+  leads, jobId,
+}: {
+  leads: Record<string, unknown>[]; jobId: string | null;
+}) {
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+
+  useEffect(() => setPage(0), [leads]);
+
+  const totalPages = Math.max(1, Math.ceil(leads.length / pageSize));
+  const pageLeads = leads.slice(page * pageSize, (page + 1) * pageSize);
+
+  return (
+    <div className="table-section">
+      <div className="table-toolbar">
+        <span className="table-title">
+          RESULTS — {leads.length.toLocaleString()} leads
+          {jobId ? ` · ${jobId.slice(0, 8)}…` : ""}
+        </span>
+        <div className="table-controls">
+          <select
+            className="page-size-select"
+            value={pageSize}
+            onChange={e => { setPageSize(Number(e.target.value)); setPage(0); }}
+          >
+            <option value={25}>25 / page</option>
+            <option value={50}>50 / page</option>
+            <option value={100}>100 / page</option>
+          </select>
+          <span className="page-indicator">Page {page + 1} / {totalPages}</span>
+          <button className="page-btn" disabled={page === 0} onClick={() => setPage(p => p - 1)}>‹ Prev</button>
+          <button className="page-btn" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Next ›</button>
+        </div>
+      </div>
+      <div className="table-wrap">
+        <table className="leads-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>First Name</th>
+              <th>Last Name</th>
+              <th>Title</th>
+              <th>Email</th>
+              <th>Company</th>
+              <th>Industry</th>
+              <th>Country</th>
+              <th>LinkedIn</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageLeads.map((lead, i) => {
+              const idx = page * pageSize + i + 1;
+              const email = lead.email ? String(lead.email) : "";
+              const linkedin = lead.linkedinUrl ? String(lead.linkedinUrl) : "";
+              return (
+                <tr key={idx}>
+                  <td className="td-num">{idx}</td>
+                  <td>{String(lead.firstName ?? "")}</td>
+                  <td>{String(lead.lastName ?? "")}</td>
+                  <td>{String(lead.title ?? "")}</td>
+                  <td className="td-email">{email ? maskEmail(email) : "—"}</td>
+                  <td>{String(lead.companyName ?? "")}</td>
+                  <td>{String(lead.companyIndustry ?? "")}</td>
+                  <td>{String(lead.companyCountry ?? lead.personCountry ?? "")}</td>
+                  <td className="td-link">
+                    {linkedin
+                      ? <a href={linkedin} target="_blank" rel="noopener noreferrer" className="li-link">↗</a>
+                      : "—"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
-function RunHistory({ jobs }: { jobs: HistoryJob[] }) {
-  if (jobs.length === 0) return null;
+// ─── Run History Panel ────────────────────────────────────────────────────────
+
+function RunHistoryPanel({
+  jobs, onView,
+}: {
+  jobs: HistoryJobEntry[]; onView: (j: HistoryJobEntry) => void;
+}) {
+  if (!jobs.length) return null;
+
   return (
-    <div className="history-panel">
-      <div className="history-title">RUN HISTORY</div>
-      {jobs.map(j => (
-        <div key={j.jobId} className="history-row">
-          <div className="history-left">
-            <span className={`history-dot ${j.status}`} />
-            <div>
-              <div className="history-id">{j.jobId.slice(0, 8)}…</div>
-              <div className="history-date">{new Date(j.createdAt).toLocaleString()}</div>
+    <div className="hist-section">
+      <div className="hist-header">
+        <span className="hist-title">RUN HISTORY</span>
+        <span className="hist-meta">{jobs.length} runs</span>
+      </div>
+      <div className="hist-list">
+        {jobs.map(j => (
+          <div key={j.jobId} className="hist-row">
+            <div className="hist-left">
+              <span className={`history-dot ${j.status}`} />
+              <div>
+                <div className="hist-id">{j.jobId.slice(0, 8)}…</div>
+                <div className="hist-date">{new Date(j.createdAt).toLocaleString()}</div>
+                <div className="hist-summary">{summarizeInput(j.input)}</div>
+              </div>
+            </div>
+            <div className="hist-right">
+              <span className="hist-count">{j.leadCount.toLocaleString()} leads</span>
+              {j.status === "done" && (
+                <>
+                  <button className="hist-btn" onClick={() => onView(j)}>View</button>
+                  <button className="history-dl" onClick={() => downloadCSV(j.leads, j.jobId)}>↓ CSV</button>
+                </>
+              )}
             </div>
           </div>
-          <div className="history-right">
-            <span className="history-count">{j.leadCount.toLocaleString()} leads</span>
-            {j.status === "done" && (
-              <button className="history-dl" onClick={j.onDownload}>↓ CSV</button>
-            )}
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -469,8 +583,10 @@ export default function Portal() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [leadCount, setLeadCount] = useState(0);
   const [runError, setRunError] = useState<string | null>(null);
-  const [history, setHistory] = useState<HistoryJob[]>([]);
   const [leads, setLeads] = useState<Record<string, unknown>[]>([]);
+  const [tableLeads, setTableLeads] = useState<Record<string, unknown>[]>([]);
+  const [tableJobId, setTableJobId] = useState<string | null>(null);
+  const [historyJobs, setHistoryJobs] = useState<HistoryJobEntry[]>([]);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -481,6 +597,18 @@ export default function Portal() {
         setValues(buildDefaults(s));
       });
   }, []);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await fetch("/api/history");
+      if (res.ok) {
+        const data = await res.json();
+        setHistoryJobs(data.jobs ?? []);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { loadHistory(); }, [loadHistory]);
 
   const setValue = useCallback((key: string, v: unknown) => {
     setValues(prev => {
@@ -494,7 +622,6 @@ export default function Portal() {
   }, []);
 
   const payload = buildActorPayload(values, (values.totalResults as number) ?? 1000);
-  // Remove totalResults from display payload since it's a run option
   const displayPayload = { ...payload };
 
   const startPolling = useCallback((jid: string) => {
@@ -509,23 +636,20 @@ export default function Portal() {
           setLeadCount(data.leadCount);
           const completedLeads: Record<string, unknown>[] = data.leads ?? [];
           setLeads(completedLeads);
-          setHistory(prev => [{
-            jobId: jid,
-            status: "done",
-            leadCount: data.leadCount,
-            createdAt: data.createdAt,
-            onDownload: () => downloadCSV(completedLeads, jid),
-          }, ...prev.filter(h => h.jobId !== jid)]);
+          setTableLeads(completedLeads);
+          setTableJobId(jid);
+          loadHistory();
         } else if (data.status === "failed") {
           clearInterval(pollRef.current!);
           setRunStatus("failed");
           setRunError(data.error ?? "Unknown error");
+          loadHistory();
         }
       } catch {
         // network error — keep polling
       }
     }, 3000);
-  }, []);
+  }, [loadHistory]);
 
   const handleRun = async () => {
     if (runStatus === "running") return;
@@ -559,7 +683,6 @@ export default function Portal() {
     setRunError(null);
   };
 
-
   if (!schema) {
     return (
       <div className="loading">
@@ -588,9 +711,8 @@ export default function Portal() {
           </div>
         </div>
 
-        {/* Body */}
+        {/* Top section: filters + right panel */}
         <div className="body">
-          {/* Left — Filters */}
           <div className="filters-col">
             <div className="filters-top">
               <div>
@@ -620,7 +742,6 @@ export default function Portal() {
             </div>
           </div>
 
-          {/* Right — JSON + Results + History */}
           <div className="right-col">
             <JsonPreview payload={displayPayload} />
             <ResultsPanel
@@ -630,9 +751,19 @@ export default function Portal() {
               error={runError}
               onDownload={() => jobId && downloadCSV(leads, jobId)}
             />
-            <RunHistory jobs={history} />
           </div>
         </div>
+
+        {/* Results table — full width, shown when leads are available */}
+        {tableLeads.length > 0 && (
+          <ResultsTable leads={tableLeads} jobId={tableJobId} />
+        )}
+
+        {/* Run history — full width */}
+        <RunHistoryPanel
+          jobs={historyJobs}
+          onView={j => { setTableLeads(j.leads); setTableJobId(j.jobId); }}
+        />
       </div>
     </>
   );
@@ -699,7 +830,7 @@ const CSS = `
   .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: blink 2s infinite; }
 
   /* Body layout */
-  .body { display: grid; grid-template-columns: 1fr 340px; flex: 1; }
+  .body { display: grid; grid-template-columns: 1fr 340px; border-bottom: 1px solid var(--border); }
 
   /* Filters col */
   .filters-col { border-right: 1px solid var(--border); display: flex; flex-direction: column; }
@@ -862,7 +993,7 @@ const CSS = `
     color: var(--text2); max-height: 220px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
   }
 
-  /* Results */
+  /* Results panel */
   .results-panel { padding: 18px; border-bottom: 1px solid var(--border); }
   .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .results-title { font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--font-mono); }
@@ -900,21 +1031,85 @@ const CSS = `
   }
   .download-btn:hover { background: rgba(29,209,122,0.18); }
 
-  /* History */
-  .history-panel { padding: 18px; }
-  .history-title { font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--font-mono); margin-bottom: 12px; }
-  .history-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--s2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; }
-  .history-left { display: flex; align-items: center; gap: 10px; }
+  /* Results table */
+  .table-section { border-top: 1px solid var(--border); }
+  .table-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px; background: var(--s1); border-bottom: 1px solid var(--border);
+    position: sticky; top: 57px; z-index: 20;
+  }
+  .table-title { font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--font-mono); }
+  .table-controls { display: flex; align-items: center; gap: 8px; }
+  .page-size-select {
+    background: var(--s3); border: 1px solid var(--border2); border-radius: 6px;
+    color: var(--text2); font-size: 11px; padding: 4px 8px; cursor: pointer;
+    font-family: var(--font-mono); outline: none; appearance: none;
+  }
+  .page-size-select:focus { border-color: var(--accent-border); }
+  .page-indicator { font-size: 10px; color: var(--text3); font-family: var(--font-mono); padding: 0 6px; }
+  .page-btn {
+    padding: 4px 11px; border-radius: 6px; font-size: 11px;
+    background: var(--s3); border: 1px solid var(--border2);
+    color: var(--text2); cursor: pointer; font-family: var(--font-mono); transition: all 0.15s;
+  }
+  .page-btn:hover:not(:disabled) { color: var(--text); border-color: var(--border3); }
+  .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .table-wrap { overflow-x: auto; max-height: 520px; overflow-y: auto; }
+  .leads-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .leads-table thead { position: sticky; top: 0; z-index: 10; }
+  .leads-table th {
+    background: var(--s2); padding: 10px 14px; text-align: left;
+    font-size: 10px; font-weight: 700; color: var(--text3);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    border-bottom: 1px solid var(--border2); white-space: nowrap; font-family: var(--font-mono);
+  }
+  .leads-table td {
+    padding: 9px 14px; border-bottom: 1px solid var(--border);
+    color: var(--text2); vertical-align: middle; white-space: nowrap; max-width: 220px;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .leads-table tbody tr:hover td { background: var(--s2); color: var(--text); }
+  .leads-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
+  .td-num { color: var(--text3) !important; font-family: var(--font-mono); font-size: 11px; width: 48px; }
+  .td-email { font-family: var(--font-mono); font-size: 11px; }
+  .td-link { text-align: center; width: 60px; }
+  .li-link {
+    color: var(--accent2); text-decoration: none; font-size: 13px;
+    padding: 2px 6px; border-radius: 4px; transition: all 0.15s;
+  }
+  .li-link:hover { background: var(--accent-bg); color: var(--accent); }
+
+  /* History panel */
   .history-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .history-dot.done { background: var(--green); }
   .history-dot.running { background: var(--accent); animation: blink 1s infinite; }
   .history-dot.failed { background: var(--red); }
-  .history-id { font-size: 11px; font-family: var(--font-mono); color: var(--text2); }
-  .history-date { font-size: 10px; color: var(--text3); margin-top: 2px; }
-  .history-right { display: flex; align-items: center; gap: 8px; }
-  .history-count { font-size: 11px; font-family: var(--font-mono); color: var(--accent2); }
-  .history-dl { font-size: 10px; padding: 3px 8px; border-radius: 4px; background: var(--green-bg); border: 1px solid rgba(29,209,122,0.25); color: var(--green); cursor: pointer; font-family: var(--font-mono); transition: all 0.15s; }
+  .history-dl { font-size: 10px; padding: 4px 9px; border-radius: 5px; background: var(--green-bg); border: 1px solid rgba(29,209,122,0.25); color: var(--green); cursor: pointer; font-family: var(--font-mono); transition: all 0.15s; }
   .history-dl:hover { background: rgba(29,209,122,0.18); }
+
+  .hist-section { border-top: 1px solid var(--border); padding: 24px; }
+  .hist-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .hist-title { font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--font-mono); }
+  .hist-meta { font-size: 10px; color: var(--text3); font-family: var(--font-mono); }
+  .hist-list { display: flex; flex-direction: column; gap: 8px; }
+  .hist-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; background: var(--s2); border: 1px solid var(--border);
+    border-radius: 8px; transition: border-color 0.15s;
+  }
+  .hist-row:hover { border-color: var(--border2); }
+  .hist-left { display: flex; align-items: center; gap: 12px; }
+  .hist-id { font-size: 12px; font-family: var(--font-mono); color: var(--text); }
+  .hist-date { font-size: 10px; color: var(--text3); margin-top: 2px; }
+  .hist-summary { font-size: 10px; color: var(--text2); margin-top: 3px; max-width: 500px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hist-right { display: flex; align-items: center; gap: 8px; }
+  .hist-count { font-size: 12px; font-family: var(--font-mono); color: var(--accent2); }
+  .hist-btn {
+    font-size: 10px; padding: 4px 10px; border-radius: 5px;
+    background: var(--accent-bg); border: 1px solid var(--accent-border);
+    color: var(--accent2); cursor: pointer; font-family: var(--font-mono); transition: all 0.15s;
+  }
+  .hist-btn:hover { background: rgba(124,109,255,0.18); }
 
   /* Modal */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px; }
