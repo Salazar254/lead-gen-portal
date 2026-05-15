@@ -10,7 +10,7 @@ export const supabase = new Proxy({} as SupabaseClient, {
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       );
     }
-    const value = (_client as Record<string | symbol, unknown>)[prop];
+    const value = (_client as unknown as Record<string | symbol, unknown>)[prop];
     return typeof value === "function" ? value.bind(_client) : value;
   },
 });
